@@ -1,15 +1,16 @@
-CXXFLAGS =	-O2 -g -Wall -fmessage-length=0
+CXXFLAGS = -O2 -g -Wall
 
-OBJS =		comments_translator.o translator.o
+all: bin/commtrans
 
-LIBS = -liconv
+comments_translator.o: comments_translator.cpp config.h translator.h
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-TARGET =	bin/translate
+translator.o: translator.cpp config.h translator.h
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(TARGET):	$(OBJS)
-	$(CXX) -o $(TARGET) $(OBJS) $(LIBS)
-
-all:	$(TARGET)
+bin/commtrans: comments_translator.o translator.o
+	$(CXX) $(CXXFLAGS) $^ -o $@ -liconv
 
 clean:
-	rm -f $(OBJS) $(TARGET)
+	rm -f comments_translator.o translator.o bin/commtrans
+

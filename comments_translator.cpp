@@ -19,7 +19,7 @@ int main(int argc, char *argv[]) {
 		t.usage();
 		return EXIT_FAILURE;
 	}
-#pragma omp parallel for
+
 	for (int i = 1; i < argc; i++) {
 		translator ti;
 		cout<<i<<". ";
