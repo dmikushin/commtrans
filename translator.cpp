@@ -93,6 +93,7 @@ char* utf8string(const wchar_t* wchar, size_t utf32_bytes)
 		perror("iconv");
 		return NULL;
 	}
+
 	iconv_close(converter);
 
 	return strdup(result_buffer);
@@ -105,14 +106,22 @@ wstring exec(const wchar_t* cmd) {
 	char* utf8cmd = utf8string(cmd, (wcslen(cmd) + 1) * sizeof(wchar_t));
 	array<wchar_t, 128> buffer;
 	wstring result;
-	shared_ptr<FILE> pipe(popen(utf8cmd, "r"), pclose);
-	if (!pipe) {
-		free(utf8cmd);
-		throw runtime_error("popen() failed!");
-	}
-	while (!feof(pipe.get())) {
-		if (fgetws(buffer.data(), 128, pipe.get()) != NULL)
-			result += buffer.data();
+	while (1)
+	{
+		result = L"";
+
+		shared_ptr<FILE> pipe(popen(utf8cmd, "r"), pclose);
+		if (!pipe) {
+			free(utf8cmd);
+			throw runtime_error("popen() failed!");
+		}
+		while (!feof(pipe.get())) {
+			if (fgetws(buffer.data(), 128, pipe.get()) != NULL)
+				result += buffer.data();
+		}
+
+		if (result != L"Failed to establish network connection")
+			break;
 	}
 	free(utf8cmd);
 	return result;

@@ -20,12 +20,21 @@ std::wstring multi_line_comment_end = L"*/";
 
 //Path where the trans perl script is saved.
 //For more information on 'trans', visit https://github.com/soimort/translate-shell
+#if 1
 std::wstring path = L"./bin/";
+#else
+std::wstring path = L"";
+#endif
 
 //The final command to execute will be:
 //command_part1 + "text to translate" + command_part2
 //Eg "./trans -no-auto -brief \""+ 蝙蝠侠 +"\" | tr -d '\n'";
+#if 1
 std::wstring command_part1 = L"trans -no-auto -brief \"";
+#else
+// API for Baidu: https://github.com/wbrn/translator
+std::wstring command_part1 = L"translator --to en \"";
+#endif
 std::wstring command_part2 = L"\" | tr -d '\n'";
 
 //The original file (untranslated version) is saved with this suffix.
