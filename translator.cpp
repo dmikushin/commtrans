@@ -80,6 +80,7 @@ bool translator::translate_file(char *file) {
 char* utf8string(const wchar_t* wchar, size_t utf32_bytes)
 {
 	char result_buffer[2048];
+	result_buffer[0] = '\0';
 
 	iconv_t converter = iconv_open("UTF-8", "wchar_t");
 
