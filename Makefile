@@ -1,13 +1,13 @@
-CXXFLAGS =	-O2 -fopenmp -g -Wall -fmessage-length=0
+CXXFLAGS =	-O2 -g -Wall -fmessage-length=0
 
 OBJS =		comments_translator.o translator.o
 
-LIBS =
+LIBS = -liconv
 
 TARGET =	bin/translate
 
 $(TARGET):	$(OBJS)
-	$(CXX) -fopenmp -o $(TARGET) $(OBJS) $(LIBS)
+	$(CXX) -o $(TARGET) $(OBJS) $(LIBS)
 
 all:	$(TARGET)
 

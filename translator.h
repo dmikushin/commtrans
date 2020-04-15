@@ -12,13 +12,13 @@
 
 class translator {
 private:
-	std::string translated;
+	std::wstring translated;
 	bool multi_line;
 public:
 	translator();
 	void usage();
 	bool translate_file(char *file_name);
-	std::string process(std::string line);
+	std::wstring process(std::wstring line);
 };
 
 #endif /* TRANSLATOR_H_ */

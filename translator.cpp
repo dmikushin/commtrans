@@ -10,6 +10,8 @@
 #include <array>
 #include <memory>
 #include <string.h>
+#include <iconv.h>
+
 #include "translator.h"
 #include "config.h"
 
@@ -17,8 +19,7 @@ using namespace std;
 
 translator::translator() {
 	multi_line = false;
-	translated = "";
-
+	translated = L"";
 }
 
 /*
@@ -30,7 +31,7 @@ void translator::usage() {
 	ifstream myfile("usage");
 	if (myfile.is_open()) {
 		while (getline(myfile, line)) {
-			cout << line << '\n';
+			cout << line << endl;
 		}
 		myfile.close();
 	}
@@ -47,9 +48,9 @@ void translator::usage() {
 bool translator::translate_file(char *file) {
 	cout << " Translating " << file << endl;
 
-	string line;
-	ifstream infile(file);
-	ofstream outfile((string(file) + string(".temp")));
+	wstring line;
+	wifstream infile(file);
+	wofstream outfile((string(file) + string(".temp")));
 	if (infile.is_open()) {
 		while (getline(infile, line)) {
 			line = process(line);
@@ -72,18 +73,47 @@ bool translator::translate_file(char *file) {
 }
 
 /*
+ * For the given wchar_t string with its byte length, returns the equivalent UTF-8 string
+ *
+ * https://stackoverflow.com/questions/9117599/call-popen-on-a-command-with-chinese-characters-on-mac
+ */
+char* utf8string(const wchar_t* wchar, size_t utf32_bytes)
+{
+	char result_buffer[2048];
+
+	iconv_t converter = iconv_open("UTF-8", "wchar_t");
+
+	char* result = result_buffer;
+	char* input = (char*)wchar;
+	size_t output_available_size = sizeof result_buffer;
+	size_t input_available_size = utf32_bytes;
+	size_t result_code = iconv(converter, &input, &input_available_size, &result, &output_available_size);
+	if (result_code == -1) {
+		perror("iconv");
+		return NULL;
+	}
+	iconv_close(converter);
+
+	return strdup(result_buffer);
+}
+
+/*
  * Executes the shell command (cmd) and returns the shell output as a string
  */
-string exec(const char* cmd) {
-	array<char, 128> buffer;
-	string result;
-	shared_ptr<FILE> pipe(popen(cmd, "r"), pclose);
-	if (!pipe)
+wstring exec(const wchar_t* cmd) {
+	char* utf8cmd = utf8string(cmd, (wcslen(cmd) + 1) * sizeof(wchar_t));
+	array<wchar_t, 128> buffer;
+	wstring result;
+	shared_ptr<FILE> pipe(popen(utf8cmd, "r"), pclose);
+	if (!pipe) {
+		free(utf8cmd);
 		throw runtime_error("popen() failed!");
+	}
 	while (!feof(pipe.get())) {
-		if (fgets(buffer.data(), 128, pipe.get()) != NULL)
+		if (fgetws(buffer.data(), 128, pipe.get()) != NULL)
 			result += buffer.data();
 	}
+	free(utf8cmd);
 	return result;
 }
 
@@ -92,13 +122,13 @@ string exec(const char* cmd) {
  * parameters: Line to translate
  * Returns: A string with all comments translated
  */
-string translator::process(string line) {
-	string command;
+wstring translator::process(wstring line) {
+	wstring command;
 	if (multi_line == true) {
 
-		cout << "Multi line: " << line << "\n";
+		wcout << L"Multi line: " << line << endl;
 
-		if (line.find(multi_line_comment_end) != string::npos) {
+		if (line.find(multi_line_comment_end) != wstring::npos) {
 			multi_line = false;
 			translated = line.substr(0, line.find(multi_line_comment_end));
 		} else
@@ -107,9 +137,9 @@ string translator::process(string line) {
 		command = path + command_part1 + translated + command_part2;
 
 		translated = exec(command.c_str());
-		cout << "\t translated: " << translated << endl;
+		wcout << L"\t translated: " << translated << endl;
 
-		if (line.find(multi_line_comment_end) != string::npos) {
+		if (line.find(multi_line_comment_end) != wstring::npos) {
 			line = translated + line.substr(line.find(multi_line_comment_end));
 		} else {
 			line = translated;
@@ -117,26 +147,26 @@ string translator::process(string line) {
 
 		return line;
 	}
-	if (line.find(single_line_comment) != string::npos && translate_single_line) {
+	if (line.find(single_line_comment) != wstring::npos && translate_single_line) {
 
-		cout << " Single line: " << line << "\n";
+		wcout << L" Single line: " << line << endl;
 		translated = line.substr(line.find(single_line_comment) + 2);
 
 		command = path + command_part1 + translated + command_part2;
 
 		translated = exec(command.c_str());
-		cout << "\t Translated: " << translated << endl;
+		wcout << L"\t Translated: " << translated << endl;
 
 		line = line.substr(0, line.find(single_line_comment) + 2) + translated;
 
 		return line;
 	}
-	if (line.find(multi_line_comment_start) != string::npos && translate_multi_line) {
+	if (line.find(multi_line_comment_start) != wstring::npos && translate_multi_line) {
 
-		cout << "Multi line: " << line << "\n";
+		wcout << L"Multi line: " << line << endl;
 		multi_line = true;
 
-		if (line.find(multi_line_comment_end) != string::npos) {
+		if (line.find(multi_line_comment_end) != wstring::npos) {
 			multi_line = false;
 			translated = line.substr(line.find(multi_line_comment_start) + 2,
 					(line.find(multi_line_comment_end)) - (line.find(multi_line_comment_start) + 2));
@@ -146,11 +176,11 @@ string translator::process(string line) {
 		command = path + command_part1 + translated + command_part2;
 
 		translated = exec(command.c_str());
-		cout << "\t translated: " << translated << endl;
+		wcout << L"\t translated: " << translated << endl;
 
-		if (line.find(multi_line_comment_end) != string::npos) {
-			string line1 = line.substr(0, line.find(multi_line_comment_start) + 2);
-			string line2 = line.substr(line.find(multi_line_comment_end));
+		if (line.find(multi_line_comment_end) != wstring::npos) {
+			wstring line1 = line.substr(0, line.find(multi_line_comment_start) + 2);
+			wstring line2 = line.substr(line.find(multi_line_comment_end));
 			line = line1 + translated + line2;
 		} else {
 			line = line.substr(0, line.find(multi_line_comment_start) + 2) + translated;
@@ -158,6 +188,6 @@ string translator::process(string line) {
 
 		return line;
 	}
-	cout << "No comment: " << line << "\n";
+	wcout << L"No comment: " << line << endl;
 	return line;
 }
